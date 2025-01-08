@@ -29,3 +29,8 @@ Then, we need to get the three parameter, `source_va`, `# of page`, and `dst_va`
 After that, we get every page's pte via `walk()`, and check whether it is accessed. If accessed, set the corresponding bit in the mask, and then clears the access bit.
 
 Finally, write the mask back via `copyout()`.
+
+## MISC
+When we allocate a process, actually only `trampoline, trapframe` are really mapped, others left blank.
+
+Question: How to understand vm.c:87 use pagetable as a virtual address? How C (as a running process) has access to physical address, given that instructions can only use virtual address?
