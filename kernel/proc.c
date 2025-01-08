@@ -126,7 +126,16 @@ found:
     release(&p->lock);
     return 0;
   }
-
+  #ifdef LAB_PGTBL
+  if ((p->u = (struct usyscall *) kalloc()) == 0) {
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+  
+  struct usyscall* t = p->u;
+  t->pid = p->pid;
+  #endif
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -149,7 +158,13 @@ found:
 // p->lock must be held.
 static void
 freeproc(struct proc *p)
-{
+{ 
+  #ifdef LAB_PGTBL
+  if (p->u) {
+    kfree((void*) p->u);
+  } 
+  p->u = 0;
+  #endif
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
@@ -195,6 +210,18 @@ proc_pagetable(struct proc *p)
     uvmfree(pagetable, 0);
     return 0;
   }
+  #ifdef LAB_PGTBL
+  // user can have READ access to the page 
+  if (mappages(pagetable, USYSCALL, PGSIZE,
+                (uint64)(p->u), PTE_R | PTE_U) < 0) {
+    // unmap trampoline & trapframe
+    // free the allocated pagetable
+    uvmunmap(pagetable, TRAPFRAME, 1, 0);
+    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+    uvmfree(pagetable, 0);
+    return 0;
+  }
+  #endif
 
   return pagetable;
 }
@@ -203,9 +230,14 @@ proc_pagetable(struct proc *p)
 // physical memory it refers to.
 void
 proc_freepagetable(pagetable_t pagetable, uint64 sz)
-{
+{ 
+  // kfree 在上层已经调用过了
+  // Trampoline不需要kfree
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  #ifdef LAB_PGTBL
+  uvmunmap(pagetable, USYSCALL, 1, 0);
+  #endif
   uvmfree(pagetable, sz);
 }
 

@@ -20,7 +20,7 @@ struct run {
 
 struct {
   struct spinlock lock;
-  struct run *freelist;
+  struct run *freelist;   // page 连接成了一个链表的形式
 } kmem;
 
 void
@@ -34,7 +34,7 @@ void
 freerange(void *pa_start, void *pa_end)
 {
   char *p;
-  p = (char*)PGROUNDUP((uint64)pa_start);
+  p = (char*)PGROUNDUP((uint64)pa_start); // pa_start 最开头的那个page不能free 因为可能有其他数据
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
     kfree(p);
 }
@@ -45,7 +45,11 @@ freerange(void *pa_start, void *pa_end)
 // initializing the allocator; see kinit above.)
 void
 kfree(void *pa)
-{
+{ 
+  // 调用方式一般是把 uint64 强制类型转化成 void*
+  // 注意参数的格式
+  // pa 是一个指针 存的值是 uint64 表示的物理地址
+  // 所以必须解引用才能访问指向的物理地址
   struct run *r;
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
@@ -54,9 +58,13 @@ kfree(void *pa)
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
 
+  // pa 本身存储的值就是一个 uint64 
+  // 所以此时 r 存储的值就是一个 uint64
   r = (struct run*)pa;
 
   acquire(&kmem.lock);
+  // 这里是把目标物理地址的前8个字节解释为了一个 struct run 结构体
+  // 说明 meta info 的维护就在page自身上
   r->next = kmem.freelist;
   kmem.freelist = r;
   release(&kmem.lock);
@@ -71,7 +79,7 @@ kalloc(void)
   struct run *r;
 
   acquire(&kmem.lock);
-  r = kmem.freelist;
+  r = kmem.freelist;      // 如果没有空的page了 那么r就是NULL
   if(r)
     kmem.freelist = r->next;
   release(&kmem.lock);
