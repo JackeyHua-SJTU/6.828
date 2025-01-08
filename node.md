@@ -33,4 +33,37 @@ Finally, write the mask back via `copyout()`.
 ## MISC
 When we allocate a process, actually only `trampoline, trapframe` are really mapped, others left blank.
 
-Question: How to understand vm.c:87 use pagetable as a virtual address? How C (as a running process) has access to physical address, given that instructions can only use virtual address?
+> **Question**: How to understand vm.c:87 use pagetable as a virtual address? How C (as a running process) has access to physical address, given that instructions can only use virtual address?
+
+**Answer**: Because the `walk` function is a kernel only function. Most of the kernel VA to PA is direct mapped, which means that **VA = PA**. (If in the user space, we can not say for sure that after looking the page table, the PA we get equals to VA. Refer to the following code analysis part.) Besides, all user processes are in the direct mapped area. Therefore we can assure that directly visit the VA has the same effect of visiting the PA. 
+
+Let's look a step further at the RISC-V assembly code of a small C code snippet to figure out **which part of the code in user space will include VA-PA transform**?
+
+```C
+typedef unsigned long uint64;
+typedef uint64 pte_t;
+typedef uint64* pagetable_t;
+
+pte_t *
+walk(pagetable_t pagetable, uint64 va)
+{
+    pte_t *pte = &pagetable[va];   
+}
+```
+```Assembly
+walk:
+        addi    sp,sp,-48
+        sd      ra,40(sp)
+        sd      s0,32(sp)
+        addi    s0,sp,48
+        sd      a0,-40(s0)
+        sd      a1,-48(s0)
+        ld      a5,-48(s0)
+        slli    a5,a5,3
+        ld      a4,-40(s0)
+        add     a5,a4,a5
+        sd      a5,-24(s0)
+
+```
+
+Direct memory visit instructions like `ld` and `sd` include VA to PA transform. Take `sd a0,-40(s0)` as an example. The base address in `s0` register plus the bias -40 will be transformed according to the page table and then stores to the new physical address, instead of the virtual address pointed by `s0 - 40`. Suppose the physical address is `pa`, then in kernel space `pa == s0 - 40`, but this equation **may not hold** in user space.
