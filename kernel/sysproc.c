@@ -119,7 +119,7 @@ sys_sigreturn(void)
 {
   struct proc *p = myproc();
   *(p->trapframe) = *(p->backup);
-  p->trapframe->epc = p->prev_epc;
+  // p->trapframe->epc = p->prev_epc;
   p->cnt = 0;
   p->dealing = 0;
   return 0;

@@ -148,7 +148,7 @@ found:
   p->context.sp = p->kstack + PGSIZE;
   p->upperbound = -1;
   p->cnt = 0;
-  p->prev_epc = -1;
+  // p->prev_epc = -1;
   p->dealing = 0;
 
   return p;

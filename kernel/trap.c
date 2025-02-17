@@ -88,7 +88,7 @@ usertrap(void)
        // backup here
       p->dealing = 1;
       *(p->backup) = *(p->trapframe);
-      p->prev_epc = p->trapframe->epc;  // previous pc is not executed
+      // p->prev_epc = p->trapframe->epc;  // previous pc is not executed
       p->trapframe->epc = p->handler;
     }
     yield();

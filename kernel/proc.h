@@ -97,7 +97,7 @@ struct proc {
   int upperbound;
   int cnt;
   uint64 handler;
-  uint64 prev_epc;
+  // uint64 prev_epc;
   int dealing;
 
   // wait_lock must be held when using this:
