@@ -93,6 +93,13 @@ struct proc {
   int xstate;                  // Exit status to be returned to parent's wait
   int pid;                     // Process ID
 
+  // alarm related
+  int upperbound;
+  int cnt;
+  uint64 handler;
+  uint64 prev_epc;
+  int dealing;
+
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process
 
@@ -101,6 +108,7 @@ struct proc {
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
   struct trapframe *trapframe; // data page for trampoline.S
+  struct trapframe *backup;    // backup for alarm task
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory

@@ -43,6 +43,9 @@ usertrap(void)
 
   // send interrupts and exceptions to kerneltrap(),
   // since we're now in the kernel.
+
+  // for potential new traps to be handled
+  // Will not influence the current trap
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
@@ -77,8 +80,19 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2) {
+    if (!p->dealing && p->upperbound && (++p->cnt) == p->upperbound) {
+      // instead of executing the code in kernel space
+      // just set epc into target address
+      // when returned to user space, the handler will be executed automatically
+       // backup here
+      p->dealing = 1;
+      *(p->backup) = *(p->trapframe);
+      p->prev_epc = p->trapframe->epc;  // previous pc is not executed
+      p->trapframe->epc = p->handler;
+    }
     yield();
+  }
 
   usertrapret();
 }
@@ -119,12 +133,14 @@ usertrapret(void)
   w_sepc(p->trapframe->epc);
 
   // tell trampoline.S the user page table to switch to.
+  // 必须在trampoline的部分完成satp的切换 因为mapping一致性
   uint64 satp = MAKE_SATP(p->pagetable);
 
   // jump to trampoline.S at the top of memory, which 
   // switches to the user page table, restores user registers,
   // and switches to user mode with sret.
-  uint64 fn = TRAMPOLINE + (userret - trampoline);
+  uint64 fn = TRAMPOLINE + (userret - trampoline);  // userret segment
+  // 如此的目的就是设置 a0 和 a1 寄存器
   ((void (*)(uint64,uint64))fn)(TRAPFRAME, satp);
 }
 

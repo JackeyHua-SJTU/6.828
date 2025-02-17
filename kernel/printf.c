@@ -121,6 +121,7 @@ panic(char *s)
   printf("panic: ");
   printf(s);
   printf("\n");
+  backtrace();
   panicked = 1; // freeze uart output from other CPUs
   for(;;)
     ;
@@ -131,4 +132,23 @@ printfinit(void)
 {
   initlock(&pr.lock, "pr");
   pr.locking = 1;
+}
+
+void
+backtrace(void)
+{
+  // when the frame pointer is the same as round up of stack pointer
+  uint64 end;
+  uint64 sp, fp;
+  sp = r_sp();
+  fp = r_fp();
+  uint64 value;
+  end = PGROUNDUP(sp);
+  while (fp != end) {
+    fp -= 8;
+    value = *((unsigned long*)fp);  // return address
+    printf("%p\n", value);
+    fp -= 8;  
+    fp = *((unsigned long*)fp);     // previous frame pointer
+  }
 }

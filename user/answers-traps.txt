@@ -1,0 +1,8 @@
+1. a0-a7 holds the arguments. 13 is stored in a2 register.
+2. f is called in line 26. g is inline optimized.
+3. printf is in 616.
+4. 42 Because ra will be set to PC + 4 = 3e + 4 = 0x42
+5. HE110 World. 57616 = 0xE110 %x is to print the hex.
+72 = r, 6c = l, 64 = d in ASCII. And Risc-V is little endian. And the code 
+executes from lower to higher.
+6. y = 1 Check the assembly, it prints whatever in a2 register.

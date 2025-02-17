@@ -1,0 +1,8 @@
+Question1:
+Getpid()
+
+Question2:
+Stuffed with junk just to pass the test
+
+Question3:
+Stuffed with junk just to pass the test
