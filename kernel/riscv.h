@@ -299,6 +299,15 @@ r_sp()
   return x;
 }
 
+// get the frame pointer
+static inline uint64
+r_fp()
+{
+  uint64 x;
+  asm volatile("mv %0, s0" : "=r" (x) );
+  return x;
+}
+
 // read and write tp, the thread pointer, which holds
 // this core's hartid (core number), the index into cpus[].
 static inline uint64
@@ -343,6 +352,7 @@ sfence_vma()
 #define PTE_W (1L << 2)
 #define PTE_X (1L << 3)
 #define PTE_U (1L << 4) // 1 -> user can access
+#define PTE_COW_FORK (1L << 8)
 
 // shift a physical address to the right place for a PTE.
 #define PA2PTE(pa) ((((uint64)pa) >> 12) << 10)

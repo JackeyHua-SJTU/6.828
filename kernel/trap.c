@@ -65,6 +65,43 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if (r_scause() == 15) {
+    // write page fault
+    // check whether the cow fork bit is set
+    // TODO: why round down?
+    uint64 va = PGROUNDDOWN(r_stval());
+    if (va >= MAXVA) {
+      p->killed = 1;
+      goto out;
+    }
+    pte_t* pte;
+    if ((pte = walk(p->pagetable, va, 0)) == 0 ||
+          ((*pte) & PTE_COW_FORK) == 0) {
+      p->killed = 1;
+      goto out;
+    }
+    // printf("pte: %p, va: %p\n", pte, va);
+    uint64 pa = PTE2PA(*pte);
+    uint flags = PTE_FLAGS(*pte);
+    flags |= PTE_W;
+    flags ^= PTE_COW_FORK;
+    // Do not change the other link's PTE_W
+    // resort to kfree to check
+    // kfree((char*)pa);
+    char* mem;
+    if ((mem = kalloc()) == 0) {
+      // kfree(mem);
+      kfree((char*)pa);
+      p->killed = 1;
+      goto out;
+    }
+    memmove(mem, (char*)pa, PGSIZE);
+    // kfree((char*)pa);
+    uvmunmap(p->pagetable, va, 1, 1);
+    if (mappages(p->pagetable, va, PGSIZE, (uint64)mem, flags) != 0) {
+      kfree(mem);
+      p->killed = 1;
+    }
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
@@ -72,7 +109,7 @@ usertrap(void)
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
   }
-
+out:
   if(p->killed)
     exit(-1);
 
